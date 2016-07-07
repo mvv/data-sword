@@ -9,6 +9,7 @@ module Data.ShortWord.TH
 
 import GHC.Arr (Ix(..))
 import GHC.Enum (succError, predError, toEnumError)
+import Data.Data
 import Data.Ratio ((%))
 import Data.Bits (Bits(..))
 #if MIN_VERSION_base(4,7,0)
@@ -19,13 +20,16 @@ import Data.Hashable (Hashable(..), hashWithSalt)
 #else
 import Data.Hashable (Hashable(..), combine)
 #endif
+import Data.Char (toLower)
+import Data.List (union)
 import Control.Applicative ((<$>), (<*>))
-import Language.Haskell.TH hiding (match)
+import Language.Haskell.TH
+import Language.Haskell.TH.Syntax (Module(..), ModName(..))
 import Data.BinaryWord (BinaryWord(..))
 
 -- | Declare signed and unsigned binary word types that use a subset
 --   of the bits of the specified underlying type. For each data type
---   the following instances are declared: 'Eq', 'Ord',
+--   the following instances are declared: 'Typeable', 'Data', 'Eq', 'Ord',
 --   'Bounded', 'Enum', 'Num', 'Real', 'Integral', 'Show', 'Read',
 --   'Hashable', 'Ix', 'Bits', 'BinaryWord'.
 mkShortWord ∷ String -- ^ Unsigned variant type name
@@ -51,21 +55,20 @@ mkShortWord' ∷ Bool
              → Int
              → [Name]
              → Q [Dec]
-mkShortWord' signed tp cn otp ocn utp bl ad = return $
+mkShortWord' signed tp cn otp ocn utp bl ad = returnDecls $
     [ NewtypeD [] tp []
 #if MIN_VERSION_template_haskell(2,11,0)
                Nothing
                (NormalC cn [(Bang NoSourceUnpackedness
                                   NoSourceStrictness,
                              uT)])
-               (ConT <$> ad)
 #else
                (NormalC cn [(NotStrict, uT)])
-# if MIN_VERSION_template_haskell(2,10,0)
-               (ConT <$> ad)
-# else
-               ad
-# endif
+#endif
+#if MIN_VERSION_template_haskell(2,10,0)
+               (ConT <$> union [''Typeable] ad)
+#else
+               (union [''Typeable] ad)
 #endif
     , inst ''Eq [tp] $
         {- (W x) == (W y) = x == y -}
@@ -589,6 +592,7 @@ mkShortWord' signed tp cn otp ocn utp bl ad = return $
       FunD n [Clause [TupP [VarP x, VarP y], VarP z] (NormalB e) []]
     funTupLZ n e   =
       FunD n [Clause [TupP [VarP x, WildP], VarP z] (NormalB e) []]
+    fun_ZC n e     = FunD n [Clause [WildP, VarP z, VarP c] (NormalB e) []]
     inline n = PragmaD $ InlineP n Inline FunLike AllPhases
     inlinable n = PragmaD $ InlineP n Inlinable FunLike AllPhases
     rule n m e = PragmaD $ RuleP n [] m e AllPhases
@@ -615,3 +619,47 @@ mkShortWord' signed tp cn otp ocn utp bl ad = return $
                       [SigE (VarE 'undefined) uT]
                , sizeE ]
     maskE = appV 'shiftL [VarE 'allOnes, shiftE]
+    returnDecls ds = do
+      Module _ (ModName modName) ← thisModule
+      let typeVar = mkName $ uncapitalize (show tp) ++ "Type"
+            where uncapitalize (h : t) = toLower h : t
+                  uncapitalize []      = []
+          fullName = modName ++ "." ++ show tp
+      return $ (ds ++) $
+        {- TYPEType ∷ DataType -}
+        [ SigD typeVar (ConT ''DataType)
+        {- TYPEType = mkIntType TYPE -}
+        , fun typeVar $ appV 'mkIntType [litS fullName]
+        , inst ''Data [tp] $
+            {- toConstr = mkIntegralConstr TYPE -}
+            [ fun 'toConstr $ appVN 'mkIntegralConstr [typeVar]
+            {-
+               gunfold _ z c = case constRep c of
+                                 IntConstr x → z (fromIntegral x)
+                                 _ → error $ "Data.Data.gunfold: Constructor" ++
+                                             show c ++ " is not of type " ++
+                                             fullName
+            -}
+            , fun_ZC 'gunfold $ CaseE (appVN 'constrRep [c]) $
+                [ Match (ConP 'IntConstr [VarP x])
+                        (NormalB $ appV z [appVN 'fromIntegral [x]])
+                        []
+                , Match WildP
+                        (NormalB $
+                           appV 'error
+                                [appV '(++)
+                                      [ litS "Data.Data.gunfold: Constructor"
+                                      , appV '(++)
+                                             [ appVN 'show [c]
+                                             , appV '(++)
+                                                    [ litS " is not of type "
+                                                    , litS fullName ]
+                                             ]
+                                      ]
+                                ])
+                        []
+                ]
+            {- dataTypeOf _ = TYPEType -}
+            , fun_ 'dataTypeOf $ VarE typeVar
+            ]
+        ]

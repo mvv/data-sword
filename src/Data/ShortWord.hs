@@ -18,13 +18,12 @@ module Data.ShortWord
   , Int48
   ) where
 
-import Data.Typeable
 import Data.Word
 import Data.BinaryWord
 import Data.ShortWord.TH
 
-mkShortWord "Word2" "Word2" "Int2" "Int2" ''Word8 2 [''Typeable]
-mkShortWord "Word4" "Word4" "Int4" "Int4" ''Word8 4 [''Typeable]
-mkShortWord "Word7" "Word7" "Int7" "Int7" ''Word8 7 [''Typeable]
-mkShortWord "Word24" "Word24" "Int24" "Int24" ''Word32 24 [''Typeable]
-mkShortWord "Word48" "Word48" "Int48" "Int48" ''Word64 48 [''Typeable]
+mkShortWord "Word2" "Word2" "Int2" "Int2" ''Word8 2 []
+mkShortWord "Word4" "Word4" "Int4" "Int4" ''Word8 4 []
+mkShortWord "Word7" "Word7" "Int7" "Int7" ''Word8 7 []
+mkShortWord "Word24" "Word24" "Int24" "Int24" ''Word32 24 []
+mkShortWord "Word48" "Word48" "Int48" "Int48" ''Word64 48 []
