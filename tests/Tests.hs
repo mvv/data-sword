@@ -1,5 +1,4 @@
 {-# LANGUAGE UnicodeSyntax #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -36,10 +35,6 @@ main = defaultMain
      $ testGroup "Tests"
          [ isoTestGroup "Word64/16" (0 ∷ U16)
          , isoTestGroup "Int64/16" (0 ∷ I16) ]
-
-#if !MIN_VERSION_base(4,7,0)
-finiteBitSize = bitSize
-#endif
 
 isoTestGroup name t =
   testGroup name

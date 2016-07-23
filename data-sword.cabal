@@ -29,7 +29,7 @@ Source-Repository head
 
 Library
   Default-Language: Haskell2010
-  Build-Depends: base >= 4.6 && < 5
+  Build-Depends: base >= 4.7 && < 5
                , template-haskell
                , hashable >= 1.1
                , data-bword >= 0.1
@@ -42,7 +42,7 @@ Library
 Test-Suite tests
   Default-Language: Haskell2010
   Type: exitcode-stdio-1.0
-  Build-Depends: base >= 4.6 && < 5
+  Build-Depends: base
                , tasty >= 0.8
                , tasty-quickcheck >= 0.8
                , data-sword

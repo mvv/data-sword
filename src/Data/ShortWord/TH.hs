@@ -10,11 +10,10 @@ module Data.ShortWord.TH
 import GHC.Arr (Ix(..))
 import GHC.Enum (succError, predError, toEnumError)
 import Data.Data
+import Data.Proxy (Proxy(..))
 import Data.Ratio ((%))
 import Data.Bits (Bits(..))
-#if MIN_VERSION_base(4,7,0)
 import Data.Bits (FiniteBits(..))
-#endif
 #if MIN_VERSION_hashable(1,2,0)
 import Data.Hashable (Hashable(..), hashWithSalt)
 #else
@@ -34,28 +33,33 @@ import Data.BinaryWord (BinaryWord(..))
 --   'Hashable', 'Ix', 'Bits', 'BinaryWord'.
 mkShortWord ∷ String -- ^ Unsigned variant type name
             → String -- ^ Unsigned variant constructor name
+            → String -- ^ Unsigned variant proxy name
             → String -- ^ Signed variant type name
             → String -- ^ Signed variant constructor name
+            → String -- ^ Signed variant proxy name
             → Name   -- ^ The underlying (unsigned) type
             → Int    -- ^ The bit length
             → [Name] -- ^ List of instances for automatic derivation
             → Q [Dec]
-mkShortWord un uc sn sc utp bl ad =
-    (++) <$> mkShortWord' False un' uc' sn' sc' utp bl ad
-         <*> mkShortWord' True  sn' sc' un' uc' utp bl ad
-  where un' = mkName un
-        uc' = mkName uc
-        sn' = mkName sn
-        sc' = mkName sc
+mkShortWord un uc upn sn sc spn utp bl ad =
+    (++) <$> mkShortWord' False un' uc' upn' sn' sc' utp bl ad
+         <*> mkShortWord' True  sn' sc' spn' un' uc' utp bl ad
+  where un'  = mkName un
+        uc'  = mkName uc
+        upn' = mkName upn
+        sn'  = mkName sn
+        sc'  = mkName sc
+        spn' = mkName spn
 
 mkShortWord' ∷ Bool
              → Name → Name
+             → Name
              → Name → Name
              → Name
              → Int
              → [Name]
              → Q [Dec]
-mkShortWord' signed tp cn otp ocn utp bl ad = returnDecls $
+mkShortWord' signed tp cn pn otp ocn utp bl ad = returnDecls $
     [ NewtypeD [] tp []
 #if MIN_VERSION_template_haskell(2,11,0)
                Nothing
@@ -70,6 +74,8 @@ mkShortWord' signed tp cn otp ocn utp bl ad = returnDecls $
 #else
                (union [''Typeable] ad)
 #endif
+    , SigD pn (AppT (ConT ''Proxy) tpT)
+    , fun pn $ ConE 'Proxy
     , inst ''Eq [tp] $
         {- (W x) == (W y) = x == y -}
         [ funUn2 '(==) $ appVN '(==) [x, y]
@@ -337,11 +343,9 @@ mkShortWord' signed tp cn otp ocn utp bl ad = returnDecls $
         {- bitSize _ = SIZE -}
         [ fun_ 'bitSize $ sizeE
         , inline 'bitSize
-#if MIN_VERSION_base(4,7,0)
         {- bitSizeMaybe _ = Just SIZE -}
         , fun_ 'bitSizeMaybe $ app (ConE 'Just) [sizeE]
         , inline 'bitSizeMaybe
-#endif
         {- isSigned _ = SIGNED -}
         , fun_ 'isSigned $ ConE $ if signed then 'True else 'False
         , inline 'isSigned
@@ -412,7 +416,6 @@ mkShortWord' signed tp cn otp ocn utp bl ad = returnDecls $
         , funUn 'popCount $ appVN 'popCount [x]
         , inline 'popCount
         ]
-#if MIN_VERSION_base(4,7,0)
     , inst ''FiniteBits [tp]
         {- finiteBitSize _ = SIZE -}
         [ fun_ 'finiteBitSize $ sizeE
@@ -426,7 +429,6 @@ mkShortWord' signed tp cn otp ocn utp bl ad = returnDecls $
         , inline 'countTrailingZeros
 # endif
         ]
-#endif
     , inst ''BinaryWord [tp]
         [ tySynInst ''UnsignedWord [tpT] $
             ConT $ if signed then otp else tp
@@ -610,13 +612,7 @@ mkShortWord' signed tp cn otp ocn utp bl ad = returnDecls $
     litS = LitE . StringL
     sizeE = litI $ toInteger bl
     shiftE = appV '(-)
-               [ appV
-#if MIN_VERSION_base(4,7,0)
-                      'finiteBitSize 
-#else
-                      'bitSize 
-#endif
-                      [SigE (VarE 'undefined) uT]
+               [ appV 'finiteBitSize [SigE (VarE 'undefined) uT]
                , sizeE ]
     maskE = appV 'shiftL [VarE 'allOnes, shiftE]
     returnDecls ds = do
