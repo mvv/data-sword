@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UnicodeSyntax #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- | This module provides signed and unsigned binary word data types of sizes
