@@ -66,7 +66,11 @@ mkShortWord' signed tp cn pn otp ocn utp bl ad = returnDecls $
                (NormalC cn [(Bang NoSourceUnpackedness
                                   NoSourceStrictness,
                              uT)])
+# if MIN_VERSION_template_haskell(2,12,0)
+               [DerivClause Nothing (ConT <$> union [''Typeable] ad)]
+# else
                (ConT <$> union [''Typeable] ad)
+# endif
 #else
                (NormalC cn [(NotStrict, uT)])
                (union [''Typeable] ad)
