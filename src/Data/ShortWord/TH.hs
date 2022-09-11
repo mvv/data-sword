@@ -21,7 +21,9 @@ import Data.Hashable (Hashable(..), combine)
 #endif
 import Data.Char (toLower)
 import Data.List (union)
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>), (<*>))
+#endif
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax (Module(..), ModName(..))
 import Data.BinaryWord (BinaryWord(..))
@@ -129,9 +131,9 @@ mkShortWord' signed tp cn pn otp ocn utp bl ad = returnDecls $
                                ])
                    (appV 'toEnumError [ litS (show tp)
                                       , VarE x
-                                      , TupE [ SigE (VarE 'minBound) tpT
-                                             , SigE (VarE 'maxBound) tpT
-                                             ]
+                                      , tup [ SigE (VarE 'minBound) tpT
+                                            , SigE (VarE 'maxBound) tpT
+                                            ]
                                       ])
                    (appW $ appV 'shiftL [VarE y, shiftE]))
             [val y $ appVN 'toEnum [x]]
@@ -168,15 +170,15 @@ mkShortWord' signed tp cn pn otp ocn utp bl ad = returnDecls $
               (NormalB $
                  CaseE (appVN 'compare [y, x])
                    [ Match
-                       (ConP 'LT [])
+                       (con 'LT [])
                        (NormalB $ appC '(:) [VarE x, appVN down [y, x]])
                        []
                    , Match
-                       (ConP 'EQ [])
+                       (con 'EQ [])
                        (NormalB $ appC '(:) [VarE x, ConE '[]])
                        []
                    , Match
-                       (ConP 'GT [])
+                       (con 'GT [])
                        (NormalB $ appC '(:) [VarE x, appVN up [y, x]])
                        []
                    ])
@@ -216,15 +218,15 @@ mkShortWord' signed tp cn pn otp ocn utp bl ad = returnDecls $
               (NormalB $
                 CaseE (appVN 'compare [y, x])
                   [ Match
-                      (ConP 'LT [])
+                      (con 'LT [])
                       (NormalB $
                          CondE (appVN '(>) [z, x])
                                (ConE '[])
                                (appV down [appVN '(-) [x, y], VarE z, VarE x]))
                       []
-                  , Match (ConP 'EQ []) (NormalB $ appVN 'repeat [x]) []
+                  , Match (con 'EQ []) (NormalB $ appVN 'repeat [x]) []
                   , Match
-                      (ConP 'GT [])
+                      (con 'GT [])
                       (NormalB $
                          CondE (appVN '(<) [z, x]) (ConE '[])
                                (appV up [appVN '(-) [y, x], VarE z, VarE x]))
@@ -292,7 +294,7 @@ mkShortWord' signed tp cn pn otp ocn utp bl ad = returnDecls $
              where (q, r) = quotRem x y
         -}
         , funUn2' 'quotRem
-            (TupE [appW (appV 'shiftL [VarE q, shiftE]), appWN r])
+            (tup [appW (appV 'shiftL [VarE q, shiftE]), appWN r])
             [vals [q, r] $ appVN 'quotRem [x, y]]
         , inline 'quotRem
         {-
@@ -300,7 +302,7 @@ mkShortWord' signed tp cn pn otp ocn utp bl ad = returnDecls $
              where (q, r) = divMod x y
         -}
         , funUn2' 'divMod
-            (TupE [appW (appV 'shiftL [VarE q, shiftE]), appWN r])
+            (tup [appW (appV 'shiftL [VarE q, shiftE]), appWN r])
             [vals [q, r] $ appVN 'divMod [x, y]]
         , inline 'divMod
         ]
@@ -315,7 +317,7 @@ mkShortWord' signed tp cn pn otp ocn utp bl ad = returnDecls $
         -}
         [ funXY 'readsPrec $
             appV 'fmap [ LamE [TupP [VarP q, VarP r]]
-                              (TupE [appVN 'fromInteger [q], VarE r])
+                              (tup [appVN 'fromInteger [q], VarE r])
                        , appVN 'readsPrec [x, y] ]
         ]
     , inst ''Hashable [tp]
@@ -463,10 +465,10 @@ mkShortWord' signed tp cn pn otp ocn utp bl ad = returnDecls $
             where (t1, t2) = unwrappedAdd x y
         -}
         , funUn2' 'unwrappedAdd
-            (TupE [ appW (appV 'shiftL [VarE t1, shiftE])
-                  , appC (if signed then ocn else cn)
-                         [appVN 'unsignedWord [t2]]
-                  ])
+            (tup [ appW (appV 'shiftL [VarE t1, shiftE])
+                 , appC (if signed then ocn else cn)
+                        [appVN 'unsignedWord [t2]]
+                 ])
             [vals [t1, t2] $ appVN 'unwrappedAdd [x, y]]
         , inline 'unwrappedAdd
         {-
@@ -475,10 +477,10 @@ mkShortWord' signed tp cn pn otp ocn utp bl ad = returnDecls $
             where (t1, t2) = unwrappedMul (shiftR x SHIFT) y
         -}
         , funUn2' 'unwrappedMul
-            (TupE [ appW (appV 'shiftL [VarE t1, shiftE])
-                  , appC (if signed then ocn else cn)
-                         [appVN 'unsignedWord [t2]]
-                  ])
+            (tup [ appW (appV 'shiftL [VarE t1, shiftE])
+                 , appC (if signed then ocn else cn)
+                        [appVN 'unsignedWord [t2]]
+                 ])
             [vals [t1, t2] $
                appV 'unwrappedMul [appV 'shiftR [VarE x, shiftE], VarE y]]
         , inline 'unwrappedMul
@@ -559,7 +561,9 @@ mkShortWord' signed tp cn pn otp ocn utp bl ad = returnDecls $
          | otherwise = AppT (ConT ''UnsignedWord) (ConT utp)
     tpT  = ConT tp
     tySynInst n ps t =
-#if MIN_VERSION_template_haskell(2,9,0)
+#if MIN_VERSION_template_haskell(2,15,0)
+      TySynInstD (TySynEqn Nothing (foldl AppT (ConT n) ps) t)
+#elif MIN_VERSION_template_haskell(2,9,0)
       TySynInstD n (TySynEqn ps t)
 #else
       TySynInstD n ps t
@@ -572,19 +576,19 @@ mkShortWord' signed tp cn pn otp ocn utp bl ad = returnDecls $
     fun n e        = FunD n [Clause [] (NormalB e) []]
     fun_ n e       = FunD n [Clause [WildP] (NormalB e) []]
     funUn' n e ds  =
-      FunD n [Clause [ConP cn [VarP x]] (NormalB e) ds]
+      FunD n [Clause [con cn [VarP x]] (NormalB e) ds]
     funUn n e      = funUn' n e []
-    funUnAsX' n e ds = FunD n [Clause [AsP x (ConP cn [VarP y])]
+    funUnAsX' n e ds = FunD n [Clause [AsP x (con cn [VarP y])]
                                       (NormalB e) ds]
     funUnAsX n e     = funUnAsX' n e []
     funUn2' n e ds =
-      FunD n [Clause [ConP cn [VarP x], ConP cn [VarP y]] (NormalB e) ds]
+      FunD n [Clause [con cn [VarP x], con cn [VarP y]] (NormalB e) ds]
     funUn2 n e     = funUn2' n e []
     funXUn' n e ds =
-      FunD n [Clause [VarP x, ConP cn [VarP y]] (NormalB e) ds]
+      FunD n [Clause [VarP x, con cn [VarP y]] (NormalB e) ds]
     funXUn n e     = funXUn' n e []
     funUnY' n e ds =
-      FunD n [Clause [ConP cn [VarP x], VarP y] (NormalB e) ds]
+      FunD n [Clause [con cn [VarP x], VarP y] (NormalB e) ds]
     funUnY n e     = funUnY' n e []
     funX' n e ds   = FunD n [Clause [VarP x] (NormalB e) ds]
     funX n e       = funX' n e []
@@ -598,7 +602,12 @@ mkShortWord' signed tp cn pn otp ocn utp bl ad = returnDecls $
     fun_ZC n e     = FunD n [Clause [WildP, VarP z, VarP c] (NormalB e) []]
     inline n = PragmaD $ InlineP n Inline FunLike AllPhases
     inlinable n = PragmaD $ InlineP n Inlinable FunLike AllPhases
-    rule n m e = PragmaD $ RuleP n [] m e AllPhases
+    rule n m e =
+#if MIN_VERSION_template_haskell(2,15,0)
+      PragmaD $ RuleP n Nothing [] m e AllPhases
+#else
+      PragmaD $ RuleP n [] m e AllPhases
+#endif
     val n e   = ValD (VarP n) (NormalB e) []
     vals ns e = ValD (TupP (VarP <$> ns)) (NormalB e) []
     app f   = foldl AppE f
@@ -616,6 +625,16 @@ mkShortWord' signed tp cn pn otp ocn utp bl ad = returnDecls $
                [ appV 'finiteBitSize [SigE (VarE 'undefined) uT]
                , sizeE ]
     maskE = appV 'shiftL [VarE 'allOnes, shiftE]
+#if MIN_VERSION_template_haskell(2,16,0)
+    tup = TupE . fmap Just
+#else
+    tup = TupE
+#endif
+#if MIN_VERSION_template_haskell(2,18,0)
+    con n = ConP n []
+#else
+    con = ConP
+#endif
     returnDecls ds = do
       Module _ (ModName modName) ← thisModule
       let typeVar = mkName $ uncapitalize (show tp) ++ "Type"
@@ -638,7 +657,7 @@ mkShortWord' signed tp cn pn otp ocn utp bl ad = returnDecls $
                                              fullName
             -}
             , fun_ZC 'gunfold $ CaseE (appVN 'constrRep [c]) $
-                [ Match (ConP 'IntConstr [VarP x])
+                [ Match (con 'IntConstr [VarP x])
                         (NormalB $ appV z [appVN 'fromIntegral [x]])
                         []
                 , Match WildP
