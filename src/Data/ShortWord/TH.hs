@@ -7,6 +7,7 @@ module Data.ShortWord.TH
   ( mkShortWord
   ) where
 
+import Control.DeepSeq (NFData (..))
 import GHC.Arr (Ix(..))
 import GHC.Enum (succError, predError, toEnumError)
 import Data.Data
@@ -79,6 +80,9 @@ mkShortWord' signed tp cn pn otp ocn utp bl ad = returnDecls $
 #endif
     , SigD pn (AppT (ConT ''Proxy) tpT)
     , fun pn $ ConE 'Proxy
+    , inst ''NFData [tp]
+        [ funUn 'rnf $ appVN 'rnf [x]
+        , inline 'rnf ]
     , inst ''Eq [tp] $
         {- (W x) == (W y) = x == y -}
         [ funUn2 '(==) $ appVN '(==) [x, y]

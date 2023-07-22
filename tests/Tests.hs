@@ -9,6 +9,7 @@
 import Test.Tasty (defaultMain, localOption, testGroup)
 import Test.Tasty.QuickCheck hiding ((.&.))
 
+import Control.DeepSeq (rnf)
 import Data.Bits
 import Data.Word
 import Data.Int
@@ -39,6 +40,7 @@ main = defaultMain
 isoTestGroup name t =
   testGroup name
     [ testProperty "Iso" $ prop_conv t
+    , testGroup "NFData" [ testProperty "rnf" $ prop_rnf t ]
     , testGroup "Eq" [ testProperty "(==)" $ prop_eq t ]
     , testGroup "Ord" [ testProperty "compare" $ prop_compare t ]
     , testGroup "Bounded"
@@ -116,6 +118,8 @@ propBinary f g t w1 w2 = isValid r && f w1 w2 == toArbitrary r
 propBinary' f g t w1 w2 = f w1 w2 == withBinary t g w1 w2
 
 prop_conv t w = toArbitrary (toType t w) == w
+
+prop_rnf = rnf
 
 prop_eq = propBinary' (==) (==)
 

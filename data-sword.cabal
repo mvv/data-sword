@@ -1,5 +1,5 @@
 Name: data-sword
-Version: 0.2.0.3
+Version: 0.2.0.4
 Category: Data
 Stability: experimental
 Synopsis: Shorter binary words
@@ -37,6 +37,7 @@ Library
                , template-haskell
                , hashable >= 1.1
                , data-bword >= 0.1
+               , deepseq >= 1.4
   Hs-Source-Dirs: src
   GHC-Options: -Wall
   Exposed-Modules:
@@ -47,6 +48,7 @@ Test-Suite tests
   Default-Language: Haskell2010
   Type: exitcode-stdio-1.0
   Build-Depends: base
+               , deepseq >= 1.4
                , tasty >= 0.8
                , tasty-quickcheck >= 0.8
                , data-sword
