@@ -19,6 +19,8 @@ module Data.ShortWord
   , aWord6
   , Word7
   , aWord7
+  , Word14
+  , aWord14
   , Word24
   , aWord24
   , Word48
@@ -35,6 +37,8 @@ module Data.ShortWord
   , anInt6
   , Int7
   , anInt7
+  , Int14
+  , anInt14
   , Int24
   , anInt24
   , Int48
@@ -51,6 +55,8 @@ mkShortWord "Word4" "Word4" "aWord4" "Int4" "Int4" "anInt4" ''Word8 4 []
 mkShortWord "Word5" "Word5" "aWord5" "Int5" "Int5" "anInt5" ''Word8 5 []
 mkShortWord "Word6" "Word6" "aWord6" "Int6" "Int6" "anInt6" ''Word8 6 []
 mkShortWord "Word7" "Word7" "aWord7" "Int7" "Int7" "anInt7" ''Word8 7 []
+mkShortWord "Word14" "Word14" "aWord14" "Int14" "Int14" "anInt14"
+            ''Word16 14 []
 mkShortWord "Word24" "Word24" "aWord24" "Int24" "Int24" "anInt24"
             ''Word32 24 []
 mkShortWord "Word48" "Word48" "aWord48" "Int48" "Int48" "anInt48"
